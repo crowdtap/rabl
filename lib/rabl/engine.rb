@@ -148,7 +148,7 @@ module Rabl
     # cache 'user', expires_in: 1.hour
     # options is passed through to the cache store
     def cache(key = nil, options = nil)
-      key ||= @_data_object # if called but missing, use object
+      key.to_a.map! { |_key| _key || @_data_object }
       @_cache = [key, options]
     end
 
