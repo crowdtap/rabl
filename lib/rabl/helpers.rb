@@ -28,7 +28,8 @@ module Rabl
       return data_token.values.first if data_token.is_a?(Hash) # @user => :user
       data = data_object(data_token)
       if is_collection?(data) && data.respond_to?(:first) # data is a collection
-        object_name = data_name(data.first).to_s.pluralize if data.first.present?
+        object_name = data.table_name if data.respond_to?(:table_name)
+        object_name ||= data_name(data.first).to_s.pluralize if data.first.present?
         object_name ||= data_token if data_token.is_a?(Symbol)
         object_name
       elsif is_object?(data) # data is an object
@@ -48,7 +49,7 @@ module Rabl
     def determine_object_root(data_token, data_name=nil, include_root=true)
       return if object_root_name == false
       root_name = data_name.to_s if include_root
-      if is_object?(data_token)
+      if is_object?(data_token) || data_token.nil?
         root_name
       elsif is_collection?(data_token)
         object_root_name || (root_name.singularize if root_name)
@@ -90,6 +91,11 @@ module Rabl
     #  => { "people" : [] }
     def collection_root_name
       defined?(@_collection_name) ? @_collection_name : nil
+    end
+
+    # Returns true if the value is a name value (symbol or string)
+    def is_name_value?(val)
+      val.is_a?(String) || val.is_a?(Symbol)
     end
 
     # Fetches a key from the cache and stores rabl template result otherwise

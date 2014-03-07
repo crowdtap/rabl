@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## 0.9.3 (December 5th)
+
+* FIX Send engine options through from render call (Thanks @bhicks)
+* FIX Cleanup compile_hash method through refactoring complexity (Thanks @bhicks)
+* FIX #503 handling render case with no lookup_context in Rails 4
+* FIX #502 fix regression in render when object is nil with explicit root name
+
+## 0.9.2 (November 21 2013)
+
+* FIX #508 by avoiding new proc syntax breaking 1.8.7
+
+## 0.9.1 (November 17 2013)
+
+* NEW #507 Resolve conditionals for extends (Thanks @micahcraig)
+* NEW #453 Support for symbol conditionals (Thanks @leoc)
+
+## 0.9.0 (October 14 2013)
+
+* FIX #497 Renderer should support partial caching and a digestor bug fixed (Thanks @siong1987)
+
+## 0.9.0.pre3 (Sept 22 2013)
+
+ * FIX #495 Digest cache when rendering from controller (Thanks @siong1987)
+
+## 0.9.0.pre2 (Sept 02 2013)
+
+ * FIX #142 Better resource resolution for AR Scopes
+ * Adds Rails 4 test fixture   (Thanks @siong1987)
+ * Adds Rails 4 cache digestor (Thanks @siong1987)
+ * Child now supports `object_root` and `root` arguments like 'collection'
+ * FIX #486 Prioritize to_hash options to allow setting root
+
 ## 0.8.6
 
  * FIX #142 #467 Do not use a collection as the default object. (Thanks @mrbrdo)

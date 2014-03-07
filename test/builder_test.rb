@@ -55,6 +55,38 @@ context "Rabl::Builder" do
         Rabl.configuration.replace_nil_values_with_empty_strings = false
       end
     end
+
+    context "when empty string values are replaced with nil values" do
+      setup do
+        Rabl.configuration.replace_empty_string_values_with_nil_values = true
+        builder({ :attributes => { :name => {} } })
+      end
+
+      asserts "that nil is returned as the value" do
+        topic.build(User.new(:name => ""))
+      end.equivalent_to({ :name => nil })
+
+      asserts "that it handles existing nil values correctly" do
+        topic.build(User.new(:name => nil))
+      end.equivalent_to({ :name => nil })
+
+      teardown do
+        Rabl.configuration.replace_empty_string_values_with_nil_values = false
+      end
+    end
+
+    context "when nil values are excluded" do
+      setup do
+        Rabl.configuration.exclude_nil_values = true
+        builder({ :attributes => { :name => {} } })
+      end
+      asserts "that an nil attribute is not returned" do
+        topic.build(User.new(:name => nil))
+      end.equivalent_to({ })
+      teardown do
+        Rabl.configuration.exclude_nil_values = false
+      end
+    end
   end
 
   context "#attribute" do
@@ -129,6 +161,13 @@ context "Rabl::Builder" do
       mock(b).object_to_hash(@users, { :root => false, :child_root => false }).returns('xyz').subject
       b.build(@user)
     end.equivalent_to({ :users => 'xyz'})
+
+    asserts "that it generates with an collection and a specified object_root_name and root" do
+      ops = { :object_root => "person", :root => :people }
+      b = builder :child => [{ :data => @users, :options => ops, :block => lambda { |u| attribute :name } }], :child_root => true
+      mock(b).object_to_hash(@users, { :root => "person", :object_root_name => "person", :child_root => true }).returns('xyz').subject
+      b.build(@user)
+    end.equivalent_to({ :people => 'xyz'})
   end
 
   context "#glue" do
@@ -172,5 +211,41 @@ context "Rabl::Builder" do
       mock(b).partial('users/show', { :object => @user }).returns({:user => 'xyz'}).subject
       b.build(false)
     end.equivalent_to({:user => 'xyz'})
+  end
+
+  context "#resolve_conditionals" do
+    class ArbObj
+      def cool?
+        false
+      end
+
+      def smooth?
+        true
+      end
+    end
+
+    asserts "that it can use symbols on if condition and return false if method returns false" do
+      scope = Rabl::Builder.new
+      scope.instance_variable_set(:@_object, ArbObj.new)
+      scope.send(:resolve_condition, { :if => :cool? })
+    end.equals(false)
+
+    asserts "that it can use symbols on if condition and return true if method returns true" do
+      scope = Rabl::Builder.new
+      scope.instance_variable_set(:@_object, ArbObj.new)
+      scope.send :resolve_condition, { :if => :smooth? }
+    end.equals(true)
+
+    asserts "that it can use symbols as unless condition and return true if method returns false" do
+      scope = Rabl::Builder.new
+      scope.instance_variable_set(:@_object, ArbObj.new)
+      scope.send :resolve_condition, { :unless => :cool? }
+    end.equals(true)
+
+    asserts "that it can use symbols as unmless condition and return false if method returns true" do
+      scope = Rabl::Builder.new
+      scope.instance_variable_set(:@_object, ArbObj.new)
+      scope.send :resolve_condition, { :unless => :smooth? }
+    end.equals(false)
   end
 end

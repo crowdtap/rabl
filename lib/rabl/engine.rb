@@ -28,20 +28,21 @@ module Rabl
       @_options[:scope] = @_scope
       @_options[:format] ||= self.request_format
       data = locals[:object].nil? ? self.default_object : locals[:object]
-      @_data_object, @_data_name = data_object(data), data_name(data)
+      @_data_object = data_object(data)
+      @_data_name = @_options[:object_root_name] || data_name(data)
       if @_options[:source_location]
         instance_eval(@_source, @_options[:source_location]) if @_source.present?
       else # without source location
         instance_eval(@_source) if @_source.present?
       end
       instance_exec(@_data_object, &block) if block_given?
-      cache_results { self.send("to_" + @_options[:format].to_s) }
+      cache_results { self.send("to_" + @_options[:format].to_s, @_options) }
     end
 
     # Returns a hash representation of the data object
     # to_hash(:root => true, :child_root => true)
     def to_hash(options={})
-      options = @_options.merge(options)
+      options = options.merge(@_options)
       data = @_data_object
       builder = Rabl::Builder.new(options)
       options[:root_name] = determine_object_root(@_data_object, @_data_name, options[:root])
@@ -274,12 +275,31 @@ module Rabl
       _cache = @_cache if defined?(@_cache)
       cache_key, cache_options = *_cache || nil
       if template_cache_configured? && cache_key
-        result_cache_key = Array(cache_key) + [@_options[:root_name], @_options[:format]]
+        if Rails.version =~ /^[4]/
+          result_cache_key = cache_key_with_digest(cache_key)
+        else # fallback for Rails 3
+          result_cache_key = cache_key_simple(cache_key)
+        end
         fetch_result_from_cache(result_cache_key, cache_options, &block)
       else # skip caching
         yield
       end
     end
 
+    def cache_key_with_digest(cache_key)
+      template = @_options[:template] || @virtual_path
+      Array(cache_key) + [
+        @_options[:root_name],
+        @_options[:format],
+        Digestor.digest(template, :rabl, lookup_context)
+      ]
+    rescue NameError => e # Handle case where lookup_context doesn't exist
+      raise e unless e.message =~ /lookup_context/
+      cache_key_simple(cache_key)
+    end # cache_key_with_digest
+
+    def cache_key_simple(key)
+      Array(key) + [@_options[:root_name], @_options[:format]]
+    end
   end
 end

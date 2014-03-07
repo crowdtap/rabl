@@ -99,6 +99,15 @@ context "Rabl::Engine" do
         template.render(scope)
       end.equals "{\"person\":{}}"
 
+      asserts "that it can set root node with a nil object and explicit name" do
+        template = rabl %q{
+          object @user => :person
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, nil
+        template.render(scope)
+      end.equals "{\"person\":{}}"
+
       asserts "that it can use non-ORM objects" do
         template = rabl %q{
           object @other
@@ -293,6 +302,18 @@ context "Rabl::Engine" do
         template.render(scope)
       end.equals "{\"user\":{\"name\":\"leo\",\"users\":[{\"user\":{\"city\":\"UNO\"}},{\"user\":{\"city\":\"DOS\"}}]}}"
 
+      asserts "child chooses name based on symbol if no elements" do
+        template = rabl %{
+          object @bar => :bar
+          child(:foos) { attribute :city }
+        }
+        scope = Object.new
+        bar = Object.new
+        stub(bar).foos { [] }
+        scope.instance_variable_set :@bar, bar
+        template.render(scope)
+      end.equals "{\"bar\":{\"foos\":[]}}"
+
       asserts "it allows suppression of root node for child collection" do
         template = rabl %{
           object @user
@@ -305,6 +326,29 @@ context "Rabl::Engine" do
         template.render(scope)
       end.equals "{\"user\":{\"name\":\"leo\",\"users\":[{\"city\":\"UNO\"},{\"city\":\"DOS\"}]}}"
 
+      asserts "it allows modification of object root node for child collection" do
+        template = rabl %{
+          object @user
+          attribute :name
+          child(@users, :object_root => 'person') { attribute :city }
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, User.new(:name => 'leo', :city => 'LA')
+        scope.instance_variable_set :@users, [User.new(:name => 'one', :city => 'UNO'), User.new(:name => 'two', :city => 'DOS')]
+        template.render(scope)
+      end.equals "{\"user\":{\"name\":\"leo\",\"users\":[{\"person\":{\"city\":\"UNO\"}},{\"person\":{\"city\":\"DOS\"}}]}}"
+
+      asserts "it allows modification of both labels for a child collection" do
+        template = rabl %{
+          object @user
+          attribute :name
+          child(@users, :root => "people", :object_root => 'item') { attribute :city }
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, User.new(:name => 'leo', :city => 'LA')
+        scope.instance_variable_set :@users, [User.new(:name => 'one', :city => 'UNO'), User.new(:name => 'two', :city => 'DOS')]
+        template.render(scope)
+      end.equals "{\"user\":{\"name\":\"leo\",\"people\":[{\"item\":{\"city\":\"UNO\"}},{\"item\":{\"city\":\"DOS\"}}]}}"
     end
 
     context "#glue" do
@@ -344,7 +388,7 @@ context "Rabl::Engine" do
         scope.instance_variable_set :@user, @user
         any_instance_of(Rabl::Engine) do |b|
           mock(b).fetch_source("foo/bar", :view_path => nil).once
-          mock(b).object_to_hash(@user, :locals => { :foo => "bar" }, :source => nil, :source_location => nil).returns({ :name => 'leo', :city => 'LA', :age => 12 })
+          mock(b).object_to_hash(@user, :locals => { :foo => "bar" }, :source => nil, :source_location => nil, :template => 'foo/bar').returns({ :name => 'leo', :city => 'LA', :age => 12 })
         end
         JSON.parse(template.render(scope))
       end.equals JSON.parse("{ \"foo\" : {\"name\":\"leo\",\"city\":\"LA\",\"age\":12} }")
@@ -396,6 +440,16 @@ context "Rabl::Engine" do
         }
         scope = Object.new
         scope.instance_variable_set :@user, User.new
+        template.render(scope)
+      end.equals "{}"
+
+      asserts "that it can set root node with a nil object and explicit name" do
+        template = rabl %q{
+          object @user => :person
+          attributes :name
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, nil
         template.render(scope)
       end.equals "{}"
     end
@@ -641,6 +695,42 @@ context "Rabl::Engine" do
         }
         scope = Object.new
         scope.instance_variable_set :@user, User.new(:name => 'leo', :city => 'LA', :age => 12)
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("{\"name\":\"leo\"}")
+    end
+
+    context "#extends" do
+      helper(:tmp_path) { @tmp_path ||= Pathname.new(Dir.mktmpdir) }
+      setup do
+        Rabl.configure do |config|
+          config.view_paths = tmp_path
+        end
+        File.open(tmp_path + "test.json.rabl", "w") do |f|
+          f.puts %q{
+            attributes :age
+          }
+        end
+      end
+
+      asserts "that it extends the template with attributes from the file" do
+        template = rabl %{
+          object @user
+          attribute :name
+          extends 'test'
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, User.new(:name => 'leo', :age => 12)
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("{\"name\":\"leo\",\"age\":12}")
+
+      asserts "that it can be passed conditionals" do
+        template = rabl %{
+          object @user
+          attribute :name
+          extends('test', {:if => lambda { |i| false }})
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, User.new(:name => 'leo', :age => 12)
         JSON.parse(template.render(scope))
       end.equals JSON.parse("{\"name\":\"leo\"}")
     end

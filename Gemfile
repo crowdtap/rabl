@@ -12,8 +12,7 @@ platforms :mri_18 do
 end
 
 group :test do
-  # RABL TEST
-  gem 'activesupport', :require => 'active_support'
+  # RABL TEST  
   gem 'builder'
 
   # FIXTURES

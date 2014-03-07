@@ -2,6 +2,7 @@
 
 [![Continuous Integration status](https://secure.travis-ci.org/nesquena/rabl.png)](http://travis-ci.org/nesquena/rabl)
 [![Dependency Status](https://gemnasium.com/nesquena/rabl.png)](https://gemnasium.com/nesquena/rabl)
+[![Code Climate](https://codeclimate.com/github/nesquena/rabl.png)](https://codeclimate.com/github/nesquena/rabl)
 
 RABL (Ruby API Builder Language) is a Rails and [Padrino](http://padrinorb.com) ruby templating system for generating JSON, XML, MessagePack, PList and BSON.
 When using the ActiveRecord 'to_json' method, I find myself wanting a more expressive and powerful solution for generating APIs.
@@ -24,6 +25,10 @@ For a breakdown of common misconceptions about RABL, please check out our guide 
 [understanding RABL](https://github.com/nesquena/rabl/wiki/Understanding-RABL) which can help clear up any confusion about this project.
 
 ## Breaking Changes ##
+
+ * v0.9.0 (released Oct 14, 2013) changes the [default node name for certain associations](https://github.com/nesquena/rabl/issues/505)
+   especially around STI models. You might want to verify for any breakages as a result and
+   be more explicit by specifying an alias i.e `@users => :users`
 
  * v0.8.0 (released Feb 14, 2013) removes multi_json dependency and
    relies on Oj (or JSON) as the json parser. Simplifies code, removes a dependency
@@ -100,8 +105,8 @@ Which would output the following JSON or XML when visiting `http://localhost:300
 ```js
 [{  "post" :
   {
-    "id" : 5, title: "...", subject: "...",
-    "user" : { full_name : "..." },
+    "id" : 5, "title": "...", "subject": "...",
+    "user" : { "full_name" : "..." },
     "read" : true
   }
 }]
@@ -138,11 +143,14 @@ Rabl.configure do |config|
   # config.view_paths = []
   # config.raise_on_missing_attribute = true # Defaults to false
   # config.replace_nil_values_with_empty_strings = true # Defaults to false
+  # config.replace_empty_string_values_with_nil = true # Defaults to false
+  # config.exclude_nil_values = true # Defaults to false
 end
 ```
 
-Each option specifies behavior related to RABL's output. If `include_json_root` is disabled that removes the
-root node for each root object in the output, and `enable_json_callbacks` enables support for 'jsonp' style callback
+Each option specifies behavior related to RABL's output. 
+
+If `include_json_root` is disabled that removes the root node for each root object in the output, and `enable_json_callbacks` enables support for 'jsonp' style callback
 output if the incoming request has a 'callback' parameter.
 
 If `include_child_root` is set to false then child objects in the response will not include
@@ -173,6 +181,8 @@ Setting this to true during development may help increase the robustness of your
 production code is not recommended.
 
 If `replace_nil_values_with_empty_strings` is set to `true`, all values that are `nil` and would normally be displayed as `null` in the response are converted to empty strings.
+
+If `exclude_nil_values` is set to `true`, all values that are `nil` and would normally be displayed as `null` in the response are not included in the response.
 
 If you wish to use [oj](https://github.com/ohler55/oj) as
 the primary JSON encoding engine simply add that to your Gemfile:
@@ -363,15 +373,6 @@ node :full_name do |u|
 end
 ```
 
-or a custom node that exists only if a condition is true:
-
-```ruby
-# m is the object being rendered, also supports :unless
-node(:foo, :if => lambda { |m| m.has_foo? }) do |m|
-  m.foo
-end
-```
-
 or don't pass a name and have the node block merged into the response:
 
 ```ruby
@@ -458,6 +459,45 @@ node(:comments) { |post| post.comments } unless locals[:hide_comments]
 ```
 
 This can be useful as an advanced tool when extending or rendering partials.
+
+### Conditions ###
+
+You can provide conditions to all kinds of nodes, attributes, extends, etc. which includes a given element only if the specified condition is true.
+
+```ruby
+collection @posts
+# m is the object being rendered, also supports :unless
+node(:coolness, :if => lambda { |m| m.coolness > 5 }) do |m|
+  m.coolness
+end
+```
+
+Because attributes take conditional options as well, we could simplify the example with:
+
+```ruby
+collection @posts
+# m is the object being rendered, also supports :unless
+attribute(:coolness, :if => lambda { |m| m.coolness > 5 })
+```
+
+The value for the `:if` and `:unless` options may be a simple `Boolean`, `Proc` or a `Symbol`. If it is a `Symbol` and the specific `@object` responds to its, the method will be called. Thus the example above can be rewritten as:
+
+```ruby
+class Post
+  def cool?
+    coolness > 5
+  end
+end
+```
+
+and then:
+
+```ruby
+collection @posts
+attribute :coolness, if: :cool?
+```
+
+Using conditions allows for easy control over when certain elements render.
 
 ### Template Scope ###
 
@@ -666,5 +706,5 @@ Thanks again for all of these great projects.
 
 ## Copyright ##
 
-Copyright © 2011-2012 Nathan Esquenazi. See [MIT-LICENSE](https://github.com/nesquena/rabl/blob/master/MIT-LICENSE) for details.
+Copyright © 2011-2013 Nathan Esquenazi. See [MIT-LICENSE](https://github.com/nesquena/rabl/blob/master/MIT-LICENSE) for details.
 

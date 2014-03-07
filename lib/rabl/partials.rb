@@ -10,7 +10,7 @@ module Rabl
       raise ArgumentError, "Must provide an :object option to render a partial" unless options.has_key?(:object)
       object, view_path = options.delete(:object), options[:view_path] || @_view_path
       source, location = self.fetch_source(file, :view_path => view_path)
-      engine_options = options.merge(:source => source, :source_location => location)
+      engine_options = options.merge(:source => source, :source_location => location, :template => file)
       self.object_to_hash(object, engine_options, &block)
     end
 
@@ -47,7 +47,7 @@ module Rabl
           raise "Cannot find rabl template '#{file}' within registered (#{view_paths.map(&:to_s).inspect}) view paths!"
         end
 
-        [File.read(file_path.to_s), file_path.to_s] if file_path
+        [File.read(file_path.to_s), file_path.to_s]
       end
     end
 
