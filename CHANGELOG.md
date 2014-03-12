@@ -1,6 +1,22 @@
 # CHANGELOG
 
-## 0.9.0.pre4 (Sept 24 2013)
+## 0.9.3 (December 5th)
+
+* FIX Send engine options through from render call (Thanks @bhicks)
+* FIX Cleanup compile_hash method through refactoring complexity (Thanks @bhicks)
+* FIX #503 handling render case with no lookup_context in Rails 4
+* FIX #502 fix regression in render when object is nil with explicit root name
+
+## 0.9.2 (November 21 2013)
+
+* FIX #508 by avoiding new proc syntax breaking 1.8.7
+
+## 0.9.1 (November 17 2013)
+
+* NEW #507 Resolve conditionals for extends (Thanks @micahcraig)
+* NEW #453 Support for symbol conditionals (Thanks @leoc)
+
+## 0.9.0 (October 14 2013)
 
 * FIX #497 Renderer should support partial caching and a digestor bug fixed (Thanks @siong1987)
 

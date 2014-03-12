@@ -36,7 +36,7 @@ module Rabl
         instance_eval(@_source) if @_source.present?
       end
       instance_exec(@_data_object, &block) if block_given?
-      cache_results { self.send("to_" + @_options[:format].to_s) }
+      cache_results { self.send("to_" + @_options[:format].to_s, @_options) }
     end
 
     # Returns a hash representation of the data object
@@ -149,7 +149,7 @@ module Rabl
     # cache 'user', expires_in: 1.hour
     # options is passed through to the cache store
     def cache(key = nil, options = nil)
-      key ||= @_data_object # if called but missing, use object
+      key.to_a.map! { |_key| _key || @_data_object }
       @_cache = [key, options]
     end
 
@@ -293,7 +293,10 @@ module Rabl
         @_options[:format],
         Digestor.digest(template, :rabl, lookup_context)
       ]
-    end
+    rescue NameError => e # Handle case where lookup_context doesn't exist
+      raise e unless e.message =~ /lookup_context/
+      cache_key_simple(cache_key)
+    end # cache_key_with_digest
 
     def cache_key_simple(key)
       Array(key) + [@_options[:root_name], @_options[:format]]
